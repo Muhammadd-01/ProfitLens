@@ -1,0 +1,200 @@
+# ==============================================================================
+# ProfitLens — Comprehensive .gitignore
+# Protects all credentials, environment secrets, generated reports, virtualenvs,
+# node modules, temporary files, and OS artifacts.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables & Confidential Credentials (CRITICAL - NEVER COMMIT)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+*.env
+**/.env
+**/.env.*
+!**/.env.example
+
+# Private Keys, Certificates & Tokens
+*.pem
+*.key
+*.cert
+*.crt
+*.pfx
+*.p12
+*.pkcs12
+id_rsa*
+*.pub
+secrets/
+**/secrets/
+credentials.json
+**/credentials.json
+service_account.json
+**/service_account.json
+
+# Supabase Local Credentials
+.supabase/
+**/.supabase/
+
+# ------------------------------------------------------------------------------
+# 2. Python Virtual Environments & Dependencies
+# ------------------------------------------------------------------------------
+venv/
+env/
+.venv/
+**/venv/
+**/.venv/
+**/env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python Bytecode & Cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ------------------------------------------------------------------------------
+# 3. Node.js, Frontend & Build Artifacts
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.pnpm-store/
+
+# Vite & Frontend Output
+dist/
+**/dist/
+frontend/dist/
+dist-ssr/
+*.local
+.vite/
+**/.vite/
+
+# ------------------------------------------------------------------------------
+# 4. Data Storage, Uploads & Generated Deliverables
+# ------------------------------------------------------------------------------
+# User-uploaded files
+data/uploads/*
+!data/uploads/.gitkeep
+**/data/uploads/*
+!**/data/uploads/.gitkeep
+
+# Generated PDF & CSV reports
+data/reports/*
+!data/reports/.gitkeep
+**/data/reports/*
+!**/data/reports/.gitkeep
+
+# Generated feature store CSVs
+data/features/
+**/data/features/
+
+# Raw CSV/Excel dumps (keep synthetic demo fixtures only)
+*.csv
+*.xlsx
+*.xls
+*.tsv
+!data/synthetic/*.csv
+!data/synthetic/*.xlsx
+
+# Generated report binaries
+*.pdf
+
+# ------------------------------------------------------------------------------
+# 5. Database Artifacts & Local SQLite
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ------------------------------------------------------------------------------
+# 6. Machine Learning Models & Heavy Artifacts
+# ------------------------------------------------------------------------------
+*.pkl
+*.joblib
+*.h5
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.bin
+
+# ------------------------------------------------------------------------------
+# 7. IDE, Editor & OS Artifacts
+# ------------------------------------------------------------------------------
+.DS_Store
+**/.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Thumbs.db:encryptable
+
+# Editors & Tools
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# ------------------------------------------------------------------------------
+# 8. Testing, Code Coverage & Jupyter Notebooks
+# ------------------------------------------------------------------------------
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# ------------------------------------------------------------------------------
+# 9. Logs & Runtime PIDs
+# ------------------------------------------------------------------------------
+*.log
+logs/
+**/logs/
+*.pid
+*.seed
+*.pid.lock

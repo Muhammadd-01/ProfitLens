@@ -1,0 +1,101 @@
+product_id,name,category,unit_price,description
+P0013,Smart Olive Oil,Food & Beverage,76.8,A high-quality smart olive oil in the Food & Beverage category.
+P0059,Advanced Chocolate,Food & Beverage,78.15,A high-quality advanced chocolate in the Food & Beverage category.
+P0038,Eco-friendly Monitor,Electronics,565.71,A high-quality eco-friendly monitor in the Electronics category.
+P0021,Basic Blender,Home & Garden,311.17,A high-quality basic blender in the Home & Garden category.
+P0064,Smart Dictionary,Books,22.24,A high-quality smart dictionary in the Books category.
+P0073,Premium T-Shirt,Clothing,43.19,A high-quality premium t-shirt in the Clothing category.
+P0024,Premium Yoga Mat,Sports,159.11,A high-quality premium yoga mat in the Sports category.
+P0090,Ultra Planter,Home & Garden,80.61,A high-quality ultra planter in the Home & Garden category.
+P0070,Classic Jacket,Clothing,75.56,A high-quality classic jacket in the Clothing category.
+P0057,Ultra Tennis Racket,Sports,295.34,A high-quality ultra tennis racket in the Sports category.
+P0017,Eco-friendly Chair,Home & Garden,312.31,A high-quality eco-friendly chair in the Home & Garden category.
+P0075,Durable Chair,Home & Garden,297.77,A high-quality durable chair in the Home & Garden category.
+P0015,Eco-friendly Paper,Office Supplies,109.71,A high-quality eco-friendly paper in the Office Supplies category.
+P0078,Smart Mouse,Electronics,74.67,A high-quality smart mouse in the Electronics category.
+P0093,Basic Headphones,Electronics,861.54,A high-quality basic headphones in the Electronics category.
+P0045,Advanced Lamp,Home & Garden,31.9,A high-quality advanced lamp in the Home & Garden category.
+P0085,Modern Gym Bag,Sports,127.28,A high-quality modern gym bag in the Sports category.
+P0020,Premium Tennis Racket,Sports,230.57,A high-quality premium tennis racket in the Sports category.
+P0058,Modern Shorts,Clothing,86.04,A high-quality modern shorts in the Clothing category.
+P0014,Basic Jacket,Clothing,85.6,A high-quality basic jacket in the Clothing category.
+P0071,Smart Folder,Office Supplies,167.23,A high-quality smart folder in the Office Supplies category.
+P0098,Standard Stapler,Office Supplies,133.93,A high-quality standard stapler in the Office Supplies category.
+P0077,Standard Running Shoes,Sports,295.31,A high-quality standard running shoes in the Sports category.
+P0005,Standard Nuts,Food & Beverage,74.32,A high-quality standard nuts in the Food & Beverage category.
+P0062,Eco-friendly Juice,Food & Beverage,29.62,A high-quality eco-friendly juice in the Food & Beverage category.
+P0022,Eco-friendly Tennis Racket,Sports,118.29,A high-quality eco-friendly tennis racket in the Sports category.
+P0036,Standard Moisturizer,Beauty,47.13,A high-quality standard moisturizer in the Beauty category.
+P0100,Premium Jacket,Clothing,185.42,A high-quality premium jacket in the Clothing category.
+P0047,Smart Paper,Office Supplies,59.33,A high-quality smart paper in the Office Supplies category.
+P0063,Ultra Gym Bag,Sports,92.86,A high-quality ultra gym bag in the Sports category.
+P0044,Advanced Shampoo,Beauty,132.46,A high-quality advanced shampoo in the Beauty category.
+P0067,Ultra Sunscreen,Beauty,94.46,A high-quality ultra sunscreen in the Beauty category.
+P0066,Classic Coffee Beans,Food & Beverage,5.56,A high-quality classic coffee beans in the Food & Beverage category.
+P0053,Advanced Cushion,Home & Garden,103.53,A high-quality advanced cushion in the Home & Garden category.
+P0074,Modern Chair,Home & Garden,388.11,A high-quality modern chair in the Home & Garden category.
+P0069,Basic Juice,Food & Beverage,67.98,A high-quality basic juice in the Food & Beverage category.
+P0084,Eco-friendly Novel,Books,23.29,A high-quality eco-friendly novel in the Books category.
+P0048,Ultra Dress,Clothing,114.2,A high-quality ultra dress in the Clothing category.
+P0009,Durable Jacket,Clothing,64.94,A high-quality durable jacket in the Clothing category.
+P0034,Durable Basketball,Sports,161.61,A high-quality durable basketball in the Sports category.
+P0051,Eco-friendly Tablet,Electronics,693.89,A high-quality eco-friendly tablet in the Electronics category.
+P0033,Eco-friendly Laptop,Electronics,1886.11,A high-quality eco-friendly laptop in the Electronics category.
+P0055,Modern Mascara,Beauty,136.17,A high-quality modern mascara in the Beauty category.
+P0091,Standard Notebook,Office Supplies,40.95,A high-quality standard notebook in the Office Supplies category.
+P0080,Classic Lamp,Home & Garden,252.08,A high-quality classic lamp in the Home & Garden category.
+P0010,Smart Basketball,Sports,87.64,A high-quality smart basketball in the Sports category.
+P0037,Standard Shampoo,Beauty,108.5,A high-quality standard shampoo in the Beauty category.
+P0008,Classic Sweater,Clothing,144.84,A high-quality classic sweater in the Clothing category.
+P0007,Standard Basketball,Sports,258.04,A high-quality standard basketball in the Sports category.
+P0079,Modern Tea,Food & Beverage,48.68,A high-quality modern tea in the Food & Beverage category.
+P0065,Advanced Chair,Home & Garden,49.89,A high-quality advanced chair in the Home & Garden category.
+P0082,Advanced Calculator,Office Supplies,101.39,A high-quality advanced calculator in the Office Supplies category.
+P0095,Durable Novel,Books,14.35,A high-quality durable novel in the Books category.
+P0094,Eco-friendly Towel,Sports,297.11,A high-quality eco-friendly towel in the Sports category.
+P0099,Classic Yoga Mat,Sports,249.72,A high-quality classic yoga mat in the Sports category.
+P0086,Ultra Water Bottle,Sports,226.32,A high-quality ultra water bottle in the Sports category.
+P0056,Standard Vase,Home & Garden,412.84,A high-quality standard vase in the Home & Garden category.
+P0081,Durable Honey,Food & Beverage,31.5,A high-quality durable honey in the Food & Beverage category.
+P0054,Classic Novel,Books,32.3,A high-quality classic novel in the Books category.
+P0025,Modern Sci-Fi,Books,30.93,A high-quality modern sci-fi in the Books category.
+P0052,Standard Conditioner,Beauty,107.61,A high-quality standard conditioner in the Beauty category.
+P0060,Classic Sneakers,Clothing,171.94,A high-quality classic sneakers in the Clothing category.
+P0001,Premium Sweater,Clothing,152.02,A high-quality premium sweater in the Clothing category.
+P0097,Durable Calculator,Office Supplies,142.08,A high-quality durable calculator in the Office Supplies category.
+P0018,Smart Lamp,Home & Garden,20.27,A high-quality smart lamp in the Home & Garden category.
+P0004,Classic Table,Home & Garden,69.06,A high-quality classic table in the Home & Garden category.
+P0006,Classic Jeans,Clothing,174.42,A high-quality classic jeans in the Clothing category.
+P0042,Standard Jacket,Clothing,42.4,A high-quality standard jacket in the Clothing category.
+P0087,Smart Mascara,Beauty,36.96,A high-quality smart mascara in the Beauty category.
+P0026,Modern Towel,Sports,132.84,A high-quality modern towel in the Sports category.
+P0050,Classic Lipstick,Beauty,109.23,A high-quality classic lipstick in the Beauty category.
+P0089,Standard Sci-Fi,Books,36.86,A high-quality standard sci-fi in the Books category.
+P0061,Basic Calculator,Office Supplies,124.47,A high-quality basic calculator in the Office Supplies category.
+P0049,Standard Monitor,Electronics,1470.66,A high-quality standard monitor in the Electronics category.
+P0076,Durable Guide,Books,36.08,A high-quality durable guide in the Books category.
+P0068,Modern Tennis Racket,Sports,203.97,A high-quality modern tennis racket in the Sports category.
+P0023,Standard Stapler,Office Supplies,49.87,A high-quality standard stapler in the Office Supplies category.
+P0035,Advanced Dictionary,Books,18.5,A high-quality advanced dictionary in the Books category.
+P0092,Ultra Speaker,Electronics,1175.19,A high-quality ultra speaker in the Electronics category.
+P0096,Ultra Yoga Mat,Sports,10.78,A high-quality ultra yoga mat in the Sports category.
+P0039,Eco-friendly Jacket,Clothing,52.67,A high-quality eco-friendly jacket in the Clothing category.
+P0012,Ultra Lamp,Home & Garden,300.6,A high-quality ultra lamp in the Home & Garden category.
+P0016,Smart Biography,Books,48.73,A high-quality smart biography in the Books category.
+P0028,Advanced Gym Bag,Sports,263.6,A high-quality advanced gym bag in the Sports category.
+P0040,Eco-friendly Journal,Books,6.98,A high-quality eco-friendly journal in the Books category.
+P0011,Durable Water Bottle,Sports,196.43,A high-quality durable water bottle in the Sports category.
+P0031,Classic Journal,Books,31.06,A high-quality classic journal in the Books category.
+P0003,Eco-friendly Towel,Sports,11.88,A high-quality eco-friendly towel in the Sports category.
+P0041,Basic Conditioner,Beauty,88.53,A high-quality basic conditioner in the Beauty category.
+P0043,Premium Vase,Home & Garden,39.15,A high-quality premium vase in the Home & Garden category.
+P0046,Classic Shampoo,Beauty,41.14,A high-quality classic shampoo in the Beauty category.
+P0083,Basic Mascara,Beauty,133.24,A high-quality basic mascara in the Beauty category.
+P0088,Eco-friendly Jacket,Clothing,124.07,A high-quality eco-friendly jacket in the Clothing category.
+P0019,Modern Moisturizer,Beauty,122.95,A high-quality modern moisturizer in the Beauty category.
+P0002,Durable Shorts,Clothing,126.37,A high-quality durable shorts in the Clothing category.
+P0032,Smart Smartphone,Electronics,1085.7,A high-quality smart smartphone in the Electronics category.
+P0029,Modern Jeans,Clothing,89.19,A high-quality modern jeans in the Clothing category.
+P0027,Premium Pen Set,Office Supplies,26.31,A high-quality premium pen set in the Office Supplies category.
+P0072,Standard Journal,Books,20.75,A high-quality standard journal in the Books category.
+P0030,Basic Mouse,Electronics,1581.0,A high-quality basic mouse in the Electronics category.
