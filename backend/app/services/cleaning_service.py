@@ -13,8 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -356,22 +355,22 @@ async def clean_dataset(
     dataset_id: str,
     organization_id: str,
     config: Optional[CleaningStrategyConfig] = None,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> CleaningSummary:
-    """Execute cleaning pipeline for a dataset and persist cleaned dataset file."""
+    """Execute cleaning pipeline for a dataset and persist cleaned dataset file in MongoDB."""
     if config is None:
         config = CleaningStrategyConfig()
 
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -382,13 +381,14 @@ async def clean_dataset(
     # Get column mappings
     mappings = dataset.column_mappings or {}
     if not mappings:
-        # Generate automatic mappings if not yet manually saved
         mapping_resp = await get_dataset_mapping_suggestions(dataset_id, organization_id, db)
         mappings = {m.canonical_field: m.mapped_column for m in mapping_resp.mappings if m.mapped_column}
 
     # Update dataset status to cleaning
-    dataset.status = DatasetStatus.CLEANING.value
-    await db.commit()
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {"status": DatasetStatus.CLEANING.value, "updated_at": datetime.utcnow()}}
+    )
 
     try:
         # Run cleaning pipeline
@@ -421,17 +421,20 @@ async def clean_dataset(
             "cleaned_at": cleaned_at,
         }
 
-        # Update dataset record
+        # Update dataset record in MongoDB
         col_meta = dataset.column_metadata or {}
         col_meta["cleaning_summary"] = summary_dict
         col_meta["cleaned_file_path"] = cleaned_file_path
-        dataset.column_metadata = col_meta
-        dataset.row_count = cleaned_rows
-        dataset.status = DatasetStatus.READY.value
-        dataset.updated_at = datetime.utcnow()
 
-        await db.commit()
-        await db.refresh(dataset)
+        await db.datasets.update_one(
+            {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+            {"$set": {
+                "column_metadata": col_meta,
+                "row_count": cleaned_rows,
+                "status": DatasetStatus.READY.value,
+                "updated_at": datetime.utcnow(),
+            }}
+        )
 
         return CleaningSummary(
             dataset_id=str(dataset.id),
@@ -446,7 +449,12 @@ async def clean_dataset(
         )
 
     except Exception as e:
-        dataset.status = DatasetStatus.ERROR.value
-        dataset.error_message = f"Cleaning error: {str(e)}"
-        await db.commit()
+        await db.datasets.update_one(
+            {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+            {"$set": {
+                "status": DatasetStatus.ERROR.value,
+                "error_message": f"Cleaning error: {str(e)}",
+                "updated_at": datetime.utcnow(),
+            }}
+        )
         raise e

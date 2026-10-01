@@ -13,8 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.analytics import (
@@ -225,19 +224,19 @@ def compute_product_pareto_curve(
 async def generate_product_intelligence(
     dataset_id: str,
     organization_id: str,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> ProductIntelligenceResponse:
-    """End-to-end product performance engine: metrics, BCG matrix, Pareto distribution, and recommendations."""
+    """End-to-end product performance engine: metrics, BCG matrix, Pareto distribution, and recommendations in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -366,8 +365,13 @@ async def generate_product_intelligence(
         "distribution": distribution.model_dump(),
         "generated_at": gen_time,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return ProductIntelligenceResponse(
         dataset_id=str(dataset.id),

@@ -1,4 +1,4 @@
-"""User and Organization SQLAlchemy models.
+"""User and Organization models for ProfitLens (MongoDB Edition).
 
 Foundation of multi-tenancy in ProfitLens.
 """
@@ -6,76 +6,113 @@ Foundation of multi-tenancy in ProfitLens.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    ForeignKey,
-    String,
-    Text,
-    func,
-)
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from app.database import Base
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any, List
 
 
-class Organization(Base):
-    """A business/company account — the top-level tenant boundary."""
-    __tablename__ = "organizations"
+class Organization:
+    """A business/company account — top-level tenant boundary."""
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    plan: Mapped[str] = mapped_column(
-        String(50), default="free", nullable=False
-    )
-    settings: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    def __init__(
+        self,
+        id: Optional[str] = None,
+        name: str = "",
+        slug: str = "",
+        plan: str = "free",
+        settings: Optional[Dict[str, Any]] = None,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        **kwargs: Any,
+    ):
+        self.id = str(id or uuid.uuid4())
+        self.name = name
+        self.slug = slug
+        self.plan = plan
+        self.settings = settings or {}
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or datetime.now(timezone.utc)
 
-    # Relationships
-    users: Mapped[List["User"]] = relationship(
-        "User", back_populates="organization", cascade="all, delete-orphan"
-    )
+    def to_doc(self) -> Dict[str, Any]:
+        """Convert to MongoDB document format."""
+        return {
+            "_id": self.id,
+            "id": self.id,
+            "name": self.name,
+            "slug": self.slug,
+            "plan": self.plan,
+            "settings": self.settings,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+    @classmethod
+    def from_doc(cls, doc: Optional[Dict[str, Any]]) -> Optional[Organization]:
+        if not doc:
+            return None
+        return cls(
+            id=str(doc.get("id") or doc.get("_id")),
+            name=doc.get("name", ""),
+            slug=doc.get("slug", ""),
+            plan=doc.get("plan", "free"),
+            settings=doc.get("settings", {}),
+            created_at=doc.get("created_at"),
+            updated_at=doc.get("updated_at"),
+        )
 
 
-class User(Base):
+class User:
     """An individual user account."""
-    __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
-    )
-    email: Mapped[str] = mapped_column(
-        String(255), unique=True, nullable=False, index=True
-    )
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(
-        String(50), default="owner", nullable=False
-    )
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    def __init__(
+        self,
+        id: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        email: str = "",
+        password_hash: str = "",
+        full_name: str = "",
+        role: str = "owner",
+        is_active: bool = True,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        **kwargs: Any,
+    ):
+        self.id = str(id or uuid.uuid4())
+        self.organization_id = str(organization_id) if organization_id else ""
+        self.email = email
+        self.password_hash = password_hash
+        self.full_name = full_name
+        self.role = role
+        self.is_active = is_active
+        self.created_at = created_at or datetime.now(timezone.utc)
+        self.updated_at = updated_at or datetime.now(timezone.utc)
 
-    # Relationships
-    organization: Mapped["Organization"] = relationship(
-        "Organization", back_populates="users"
-    )
+    def to_doc(self) -> Dict[str, Any]:
+        """Convert to MongoDB document format."""
+        return {
+            "_id": self.id,
+            "id": self.id,
+            "organization_id": self.organization_id,
+            "email": self.email,
+            "password_hash": self.password_hash,
+            "full_name": self.full_name,
+            "role": self.role,
+            "is_active": self.is_active,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+    @classmethod
+    def from_doc(cls, doc: Optional[Dict[str, Any]]) -> Optional[User]:
+        if not doc:
+            return None
+        return cls(
+            id=str(doc.get("id") or doc.get("_id")),
+            organization_id=str(doc.get("organization_id", "")),
+            email=doc.get("email", ""),
+            password_hash=doc.get("password_hash") or doc.get("hashed_password", ""),
+            full_name=doc.get("full_name", ""),
+            role=doc.get("role", "owner"),
+            is_active=doc.get("is_active", True),
+            created_at=doc.get("created_at"),
+            updated_at=doc.get("updated_at"),
+        )

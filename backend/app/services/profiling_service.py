@@ -57,8 +57,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -360,16 +359,16 @@ def profile_dataframe(df: pd.DataFrame, dataset_id: str, dataset_name: str) -> D
 async def profile_dataset(
     dataset_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> DataQualityReport:
     """Load an uploaded dataset file, run the profiling engine, and save results in DB."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError("Dataset not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError("Dataset not found")
 
@@ -398,12 +397,16 @@ async def profile_dataset(
     report = profile_dataframe(df, str(dataset.id), dataset.name)
 
     # Update dataset in DB
-    dataset.data_quality_score = report.quality_score
-    dataset.row_count = report.row_count
-    dataset.column_count = report.column_count
-    dataset.status = "profiled"
-    dataset.column_mappings = report.detected_roles
-    dataset.profiling_results = report.dict()
-
-    await db.flush()
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "data_quality_score": report.quality_score,
+            "row_count": report.row_count,
+            "column_count": report.column_count,
+            "status": "profiled",
+            "column_mappings": report.detected_roles,
+            "profiling_results": report.dict(),
+            "updated_at": datetime.utcnow(),
+        }}
+    )
     return report

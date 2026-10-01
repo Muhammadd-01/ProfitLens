@@ -1,9 +1,9 @@
-from __future__ import annotations
-
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
+from app.database import init_db, close_db
 from app.api.auth import router as auth_router
 from app.api.datasets import router as datasets_router
 from app.api.analytics import router as analytics_router
@@ -13,12 +13,25 @@ from app.api.reports import router as reports_router
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifecycle manager: initialize MongoDB indexes on startup, close connections on shutdown."""
+    try:
+        await init_db()
+    except Exception as exc:
+        print(f"Warning: Could not initialize MongoDB indexes on startup: {exc}")
+    yield
+    await close_db()
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Turn Business Data Into Profitable Decisions.",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # Robust CORS middleware configuration
@@ -48,17 +61,21 @@ async def global_exception_handler(request: Request, exc: Exception):
     origin = request.headers.get("origin", "http://localhost:5173")
     err_str = str(exc)
 
-    if "nodename nor servname" in err_str or "gaierror" in err_str or "CannotConnectNowError" in err_str:
+    if (
+        "ServerSelectionTimeoutError" in err_str
+        or "ConnectionRefusedError" in err_str
+        or "could not connect to server" in err_str
+    ):
         detail = (
-            "Database Connection Error: Could not resolve Supabase host. "
-            "Please check that DATABASE_URL in your .env file is set to your active Supabase connection string. "
-            "(The current URL contains placeholder text like [project-ref] or [password])."
+            "Database Connection Error: Could not connect to MongoDB. "
+            "Please ensure MongoDB is running (e.g. locally on mongodb://localhost:27017 for MongoDB Compass) "
+            "and check MONGODB_URL in your .env file."
         )
         status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    elif "ConnectionRefusedError" in err_str or "password authentication failed" in err_str:
+    elif "OperationFailure" in err_str and "auth" in err_str.lower():
         detail = (
-            "Database Authentication Error: Connection was refused or password incorrect. "
-            "Please check your PostgreSQL credentials in .env."
+            "Database Authentication Error: MongoDB authentication failed. "
+            "Please verify your credentials in MONGODB_URL in .env."
         )
         status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     else:

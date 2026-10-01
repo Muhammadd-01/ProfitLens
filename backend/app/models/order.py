@@ -1,64 +1,93 @@
-"""Order model — the central transactional record."""
+"""Order model — transactional record (MongoDB Edition)."""
 
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
-from typing import Optional
-
-from sqlalchemy import (
-    Boolean,
-    DateTime,
-    Float,
-    ForeignKey,
-    Integer,
-    String,
-    func,
-)
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
-
-from app.database import Base
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 
 
-class Order(Base):
+class Order:
     """A single order/transaction from uploaded data."""
-    __tablename__ = "orders"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False,
-        index=True,
-    )
-    dataset_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=False,
-        index=True,
-    )
+    def __init__(
+        self,
+        id: Optional[str] = None,
+        organization_id: Optional[str] = None,
+        dataset_id: Optional[str] = None,
+        external_id: Optional[str] = None,
+        customer_id: Optional[str] = None,
+        product_id: Optional[str] = None,
+        order_date: Optional[datetime] = None,
+        amount: Optional[float] = None,
+        discount: Optional[float] = 0.0,
+        quantity: Optional[int] = 1,
+        status: Optional[str] = None,
+        region: Optional[str] = None,
+        channel: Optional[str] = None,
+        is_anomaly: Optional[bool] = False,
+        anomaly_score: Optional[float] = None,
+        created_at: Optional[datetime] = None,
+        **kwargs: Any,
+    ):
+        self.id = str(id or uuid.uuid4())
+        self.organization_id = str(organization_id) if organization_id else ""
+        self.dataset_id = str(dataset_id) if dataset_id else ""
+        self.external_id = external_id
+        self.customer_id = str(customer_id) if customer_id else None
+        self.product_id = str(product_id) if product_id else None
+        self.order_date = order_date
+        self.amount = amount
+        self.discount = discount or 0.0
+        self.quantity = quantity or 1
+        self.status = status
+        self.region = region
+        self.channel = channel
+        self.is_anomaly = is_anomaly or False
+        self.anomaly_score = anomaly_score
+        self.created_at = created_at or datetime.now(timezone.utc)
 
-    # From uploaded data
-    external_id: Mapped[Optional[str]] = mapped_column(String(255))
-    customer_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("customers.id"), index=True
-    )
-    product_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("products.id"), index=True
-    )
-    order_date: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), index=True
-    )
-    amount: Mapped[Optional[float]] = mapped_column(Float)
-    discount: Mapped[Optional[float]] = mapped_column(Float, default=0)
-    quantity: Mapped[Optional[int]] = mapped_column(Integer, default=1)
-    status: Mapped[Optional[str]] = mapped_column(String(50))
-    region: Mapped[Optional[str]] = mapped_column(String(255))
-    channel: Mapped[Optional[str]] = mapped_column(String(100))
+    def to_doc(self) -> Dict[str, Any]:
+        """Convert to MongoDB document format."""
+        return {
+            "_id": self.id,
+            "id": self.id,
+            "organization_id": self.organization_id,
+            "dataset_id": self.dataset_id,
+            "external_id": self.external_id,
+            "customer_id": self.customer_id,
+            "product_id": self.product_id,
+            "order_date": self.order_date,
+            "amount": self.amount,
+            "discount": self.discount,
+            "quantity": self.quantity,
+            "status": self.status,
+            "region": self.region,
+            "channel": self.channel,
+            "is_anomaly": self.is_anomaly,
+            "anomaly_score": self.anomaly_score,
+            "created_at": self.created_at,
+        }
 
-    # ML-derived (populated by anomaly detection)
-    is_anomaly: Mapped[Optional[bool]] = mapped_column(Boolean, default=False)
-    anomaly_score: Mapped[Optional[float]] = mapped_column(Float)
-
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    @classmethod
+    def from_doc(cls, doc: Optional[Dict[str, Any]]) -> Optional[Order]:
+        if not doc:
+            return None
+        return cls(
+            id=str(doc.get("id") or doc.get("_id")),
+            organization_id=str(doc.get("organization_id", "")),
+            dataset_id=str(doc.get("dataset_id", "")),
+            external_id=doc.get("external_id"),
+            customer_id=str(doc.get("customer_id")) if doc.get("customer_id") else None,
+            product_id=str(doc.get("product_id")) if doc.get("product_id") else None,
+            order_date=doc.get("order_date"),
+            amount=doc.get("amount"),
+            discount=doc.get("discount", 0.0),
+            quantity=doc.get("quantity", 1),
+            status=doc.get("status"),
+            region=doc.get("region"),
+            channel=doc.get("channel"),
+            is_anomaly=doc.get("is_anomaly", False),
+            anomaly_score=doc.get("anomaly_score"),
+            created_at=doc.get("created_at"),
+        )

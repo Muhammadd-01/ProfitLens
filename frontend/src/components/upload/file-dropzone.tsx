@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
+import type { AxiosProgressEvent } from 'axios';
 import type { DatasetUploadResponse } from '@/types';
 
 interface FileDropzoneProps {
@@ -57,7 +58,7 @@ export function FileDropzone({ onUploadSuccess }: FileDropzoneProps) {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        onUploadProgress: (progressEvent) => {
+        onUploadProgress: (progressEvent: AxiosProgressEvent) => {
           if (progressEvent.total) {
             const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
             setUploadProgress(percent);

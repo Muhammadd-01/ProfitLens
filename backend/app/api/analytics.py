@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 from typing import List, Optional
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_organization_id
@@ -29,7 +28,7 @@ async def get_dashboard_summary(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get complete Executive Dashboard packet: KPIs, daily & monthly timeseries, categories, and products."""
     try:
@@ -55,7 +54,7 @@ async def get_kpis(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get high-level executive KPIs with period-over-period percentage comparisons."""
     summary = await get_dashboard_summary(dataset_id, organization_id, current_user, db)
@@ -68,7 +67,7 @@ async def get_timeseries(
     granularity: str = Query("daily", enum=["daily", "monthly"]),
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get historical revenue trajectory with cumulative totals."""
     summary = await get_dashboard_summary(dataset_id, organization_id, current_user, db)
@@ -82,7 +81,7 @@ async def get_category_breakdown(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get category revenue contributions with Pareto 80/20 tagging."""
     summary = await get_dashboard_summary(dataset_id, organization_id, current_user, db)
@@ -94,7 +93,7 @@ async def get_top_products(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get top performing revenue-generating products."""
     summary = await get_dashboard_summary(dataset_id, organization_id, current_user, db)
@@ -106,7 +105,7 @@ async def get_product_intelligence(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve full product performance intelligence: BCG growth-share matrix, Pareto 80/20 distribution, and SKU actions."""
     try:

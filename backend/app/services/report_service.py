@@ -13,8 +13,7 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -643,16 +642,16 @@ async def generate_dataset_report(
     dataset_id: str,
     organization_id: str,
     request: ReportGenerateRequest,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> ReportMetadataItem:
-    """Orchestrates multi-format report generation and persistence."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Orchestrates multi-format report generation and persistence in MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -724,14 +723,18 @@ async def generate_dataset_report(
         created_at=now_iso,
     )
 
-    # Save to dataset metadata
+    # Save to dataset metadata in MongoDB
     existing_reports = list(col_meta.get("generated_reports", []))
     existing_reports.insert(0, item.model_dump())
     col_meta["generated_reports"] = existing_reports
-    dataset.column_metadata = col_meta
 
-    await db.commit()
-    await db.refresh(dataset)
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return item
 
@@ -739,16 +742,16 @@ async def generate_dataset_report(
 async def list_dataset_reports(
     dataset_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> ReportListResponse:
-    """Retrieves metadata history of all reports compiled for a dataset."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Retrieves metadata history of all reports compiled for a dataset in MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -773,16 +776,16 @@ async def get_report_file_path(
     dataset_id: str,
     report_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> Tuple[str, str, str]:
-    """Resolves the physical file path, filename, and MIME type for report download."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Resolves the physical file path, filename, and MIME type for report download from MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 

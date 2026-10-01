@@ -16,11 +16,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "0.1.0"
     DEBUG: bool = False
     
-    # Supabase / PostgreSQL
-    SUPABASE_URL: str = "https://jcqlowjmcjyrbilwqjnj.supabase.co"
-    SUPABASE_ANON_KEY: str = ""
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/profitlens"
-    DATABASE_URL_SYNC: str = "postgresql://postgres:password@localhost:5432/profitlens"
+    # MongoDB / MongoDB Compass
+    MONGODB_URL: str = "mongodb://localhost:27017"
+    DATABASE_NAME: str = "profitlens"
     
     # JWT Authentication
     SECRET_KEY: str = "change-me-in-production-use-a-long-random-string"

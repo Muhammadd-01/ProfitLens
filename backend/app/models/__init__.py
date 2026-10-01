@@ -1,4 +1,4 @@
-"""SQLAlchemy ORM models for ProfitLens."""
+"""MongoDB Document models for ProfitLens."""
 
 from __future__ import annotations
 

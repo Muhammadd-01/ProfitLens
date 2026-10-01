@@ -26,8 +26,7 @@ from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
 )
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.models.customer import Customer
@@ -400,19 +399,19 @@ async def run_customer_churn_prediction(
     organization_id: str,
     model_type: Optional[str] = "auto",
     inactivity_threshold_days: Optional[int] = None,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> ChurnOverviewResponse:
-    """Master pipeline: loads data, formulates windows, trains classifier, scores base, and saves artifacts."""
+    """Master pipeline: loads data, formulates windows, trains classifier, scores base, and saves artifacts in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -472,7 +471,7 @@ async def run_customer_churn_prediction(
     scored_export_df["top_risk_factors"] = scored_export_df["top_risk_factors"].apply(lambda l: " | ".join(l))
     scored_export_df.to_csv(churn_csv_file, index=False)
 
-    # 5. Persist summary into dataset metadata
+    # 5. Persist summary into dataset metadata in MongoDB
     col_meta["churn_results"] = {
         "dataset_id": str(dataset.id),
         "model_type_used": model_name,
@@ -484,8 +483,14 @@ async def run_customer_churn_prediction(
         "trained_at": trained_at,
         "churn_file_path": churn_csv_file,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return ChurnOverviewResponse(
         dataset_id=str(dataset.id),
@@ -506,19 +511,19 @@ async def get_churn_customers_paginated(
     search: Optional[str] = None,
     page: int = 1,
     page_size: int = 50,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> ChurnCustomerListResponse:
-    """Retrieves paginated and filtered scored customers from cache or triggers pipeline."""
+    """Retrieves paginated and filtered scored customers from cache or triggers pipeline in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 

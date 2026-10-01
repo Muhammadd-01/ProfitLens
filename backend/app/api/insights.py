@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_organization_id
@@ -27,7 +27,7 @@ async def get_insights_feed(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve prioritized executive business insights feed."""
     try:
@@ -53,7 +53,7 @@ async def trigger_insights_generation(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Re-evaluate all business rules and generate updated executive insights."""
     try:
@@ -81,7 +81,7 @@ async def dismiss_insight(
     request: Optional[InsightDismissRequest] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Dismiss or restore a specific executive insight card."""
     is_dismissed = request.dismissed if request else True

@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from typing import Optional
-import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_organization_id
@@ -48,7 +46,7 @@ async def train_segmentation(
     request: Optional[SegmentationTrainRequest] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fit or refit K-Means customer segmentation with optimal or specified k."""
     k_val = request.k if request else None
@@ -76,7 +74,7 @@ async def get_segmentation_results(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve existing customer segmentation results or trigger initial run."""
     try:
@@ -104,7 +102,7 @@ async def train_churn(
     request: Optional[ChurnTrainRequest] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fit or retrain Supervised Customer Churn classifier."""
     model_type = request.model_type if request else "auto"
@@ -134,7 +132,7 @@ async def get_churn_overview(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve model performance metrics, risk distribution, and top feature drivers."""
     try:
@@ -165,7 +163,7 @@ async def get_churn_customers(
     page_size: int = 50,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve individual scored customers with risk factors and retention playbooks."""
     try:
@@ -196,7 +194,7 @@ async def train_forecast(
     request: Optional[ForecastTrainRequest] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Fit time-series model (Holt-Winters / ARIMA / Linear) and project forward revenue horizon."""
     m_type = request.model_type if request else "auto"
@@ -230,7 +228,7 @@ async def get_forecast_results(
     confidence_level: Optional[float] = 0.95,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve existing sales forecast or run initial projection."""
     try:
@@ -260,7 +258,7 @@ async def detect_anomalies(
     request: Optional[AnomalyDetectRequest] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Run Isolation Forest and Modified Z-Score to detect fraudulent or anomalous orders."""
     contam = request.contamination if request else 0.02
@@ -290,7 +288,7 @@ async def get_anomalies_list(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve existing anomaly scan results or run initial detection."""
     try:
@@ -318,7 +316,7 @@ async def review_anomaly(
     request: AnomalyReviewRequest,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Update operator review state for a flagged anomaly."""
     try:
@@ -347,7 +345,7 @@ async def analyze_customer_sentiment(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Trigger Natural Language Processing (NLP) sentiment, aspect, and keyword extraction over customer reviews."""
     try:
@@ -373,7 +371,7 @@ async def get_sentiment_overview(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve existing sentiment intelligence overview or execute initial NLP run."""
     try:

@@ -14,8 +14,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -337,16 +336,16 @@ def compute_timeseries_features(
 async def generate_dataset_features(
     dataset_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> FeatureEngineeringResponse:
-    """Generate both customer-level and time-series feature tables for a dataset."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Generate both customer-level and time-series feature tables for a dataset in MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -436,7 +435,7 @@ async def generate_dataset_features(
 
     generated_at = datetime.utcnow().isoformat()
 
-    # Save metadata
+    # Save metadata in MongoDB
     col_meta["features_summary"] = {
         "dataset_id": str(dataset.id),
         "has_customer_features": cust_summary is not None,
@@ -444,8 +443,14 @@ async def generate_dataset_features(
         "total_engineered_features": len(catalog_all),
         "generated_at": generated_at,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return FeatureEngineeringResponse(
         dataset_id=str(dataset.id),

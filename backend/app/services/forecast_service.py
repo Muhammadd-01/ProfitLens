@@ -14,8 +14,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 import statsmodels.api as sm
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.arima.model import ARIMA
@@ -253,19 +252,19 @@ async def run_sales_forecasting(
     model_type: Optional[str] = "auto",
     horizon_days: Optional[int] = 30,
     confidence_level: Optional[float] = 0.95,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> ForecastResponse:
-    """Executes full sales forecasting pipeline and saves artifacts."""
+    """Executes full sales forecasting pipeline and saves artifacts in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -378,8 +377,14 @@ async def run_sales_forecasting(
         "generated_at": generated_at,
         "forecast_file_path": forecast_csv,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return ForecastResponse(
         dataset_id=str(dataset.id),

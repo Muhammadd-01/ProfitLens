@@ -23,7 +23,7 @@ ProfitLens is a data science decision-support platform that allows business owne
 | Frontend | React + TypeScript + Vite + Tailwind CSS + shadcn/ui |
 | Backend | Python + FastAPI |
 | Data Science | Pandas + NumPy + Scikit-learn + Statsmodels |
-| Database | Supabase (managed PostgreSQL) |
+| Database | MongoDB & MongoDB Compass (Native Motor async driver) |
 | Charts | Recharts + Plotly |
 
 ## Getting Started
@@ -32,9 +32,9 @@ ProfitLens is a data science decision-support platform that allows business owne
 
 - Node.js 18+
 - Python 3.9+
-- Supabase account (free tier works)
+- MongoDB & MongoDB Compass (running locally on `mongodb://localhost:27017`)
 
-### Installation
+### Installation & Quickstart
 
 ```bash
 # Clone the repository
@@ -43,25 +43,30 @@ cd profitlens
 
 # Copy environment variables
 cp .env.example .env
-# Edit .env with your Supabase credentials
+# Default connects to mongodb://localhost:27017 with database 'profitlens'
 
-# Install all dependencies
+# Install all dependencies (backend venv + frontend npm)
 make install
 
-# Generate synthetic data for development
-make generate-data
+# Seed MongoDB with synthetic retail dataset (viewable immediately in Compass)
+make seed-db
 
-# Start backend (terminal 1)
+# Start backend server (terminal 1)
 make backend
 
-# Start frontend (terminal 2)
+# Start frontend server (terminal 2)
 make frontend
 ```
 
 The app will be available at:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/api/docs
+- API Interactive Docs: http://localhost:8000/api/docs
+- MongoDB Compass: Connect to `mongodb://localhost:27017` -> database `profitlens`
+
+**Default Credentials:**
+- Email: `demo@profitlens.ai`
+- Password: `password123`
 
 ### Project Structure
 
@@ -71,18 +76,14 @@ profitlens/
 ├── backend/           # FastAPI + Data Science
 │   ├── app/
 │   │   ├── api/       # API route handlers
-│   │   ├── models/    # SQLAlchemy ORM models
+│   │   ├── models/    # MongoDB Document models & schemas
 │   │   ├── schemas/   # Pydantic request/response schemas
-│   │   ├── services/  # Business logic services
-│   │   ├── analytics/ # Revenue, customer, product analytics
-│   │   ├── ml/        # Machine learning models
-│   │   ├── insights/  # Insight generation engine
-│   │   └── utils/     # Shared utilities
-│   └── alembic/       # Database migrations
+│   │   ├── services/  # Analytics, ML, NLP & Reporting services
+│   │   └── utils/     # Shared file and statistical utilities
 ├── data/
-│   └── synthetic/     # Generated sample data
-├── notebooks/         # Jupyter analysis notebook
-├── tests/             # Test suites
+│   ├── seed_mongodb.py # MongoDB database seeding script
+│   └── synthetic/     # Generated sample datasets (10k customers, 50k orders)
+├── tests/             # Comprehensive pytest backend test suite
 └── docs/              # Documentation
 ```
 

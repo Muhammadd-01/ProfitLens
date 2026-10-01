@@ -1,4 +1,4 @@
-"""Authentication service — handles user registration, login, and JWT tokens."""
+"""Authentication service — handles user registration, login, and JWT tokens (MongoDB Edition)."""
 
 from __future__ import annotations
 
@@ -7,10 +7,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
+if not hasattr(bcrypt, "__about__"):
+    bcrypt.__about__ = type("About", (), {"__version__": getattr(bcrypt, "__version__", "4.0.0")})()
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.config import get_settings
 from app.models.user import Organization, User
@@ -37,8 +40,8 @@ def create_access_token(user_id: str, organization_id: str) -> str:
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
     payload = {
-        "sub": user_id,
-        "org": organization_id,
+        "sub": str(user_id),
+        "org": str(organization_id),
         "exp": expire,
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
@@ -68,34 +71,32 @@ def _slugify(name: str) -> str:
 
 
 async def register_user(
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
     email: str,
     password: str,
     full_name: str,
     organization_name: str,
 ) -> AuthResponse:
-    """Register a new user and create their organization."""
-    result = await db.execute(select(User).where(User.email == email))
-    if result.scalar_one_or_none():
+    """Register a new user and create their organization in MongoDB."""
+    existing_user = await db.users.find_one({"email": email.strip().lower()})
+    if existing_user:
         raise ValueError("An account with this email already exists")
 
     org = Organization(
-        name=organization_name,
+        name=organization_name.strip(),
         slug=_slugify(organization_name),
         plan="free",
     )
-    db.add(org)
-    await db.flush()
+    await db.organizations.insert_one(org.to_doc())
 
     user = User(
         organization_id=org.id,
-        email=email,
+        email=email.strip().lower(),
         password_hash=hash_password(password),
-        full_name=full_name,
+        full_name=full_name.strip(),
         role="owner",
     )
-    db.add(user)
-    await db.flush()
+    await db.users.insert_one(user.to_doc())
 
     token = create_access_token(str(user.id), str(org.id))
 
@@ -121,24 +122,26 @@ async def register_user(
 
 
 async def authenticate_user(
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
     email: str,
     password: str,
 ) -> AuthResponse:
-    """Authenticate a user with email + password."""
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    
+    """Authenticate a user with email + password in MongoDB."""
+    user_doc = await db.users.find_one({"email": email.strip().lower()})
+    if not user_doc:
+        raise ValueError("Invalid email or password")
+
+    user = User.from_doc(user_doc)
     if not user or not verify_password(password, user.password_hash):
         raise ValueError("Invalid email or password")
 
     if not user.is_active:
         raise ValueError("Account is deactivated")
 
-    result = await db.execute(
-        select(Organization).where(Organization.id == user.organization_id)
-    )
-    org = result.scalar_one()
+    org_doc = await db.organizations.find_one({
+        "$or": [{"id": user.organization_id}, {"_id": user.organization_id}]
+    })
+    org = Organization.from_doc(org_doc) if org_doc else Organization(id=user.organization_id, name="Default Org")
 
     token = create_access_token(str(user.id), str(org.id))
 

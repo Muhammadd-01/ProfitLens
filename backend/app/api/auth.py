@@ -1,14 +1,15 @@
-"""Authentication API routes — login, register, and user info endpoints."""
+"""Authentication API routes — login, register, and user info endpoints (MongoDB Edition)."""
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.schemas.auth import LoginRequest, RegisterRequest, AuthResponse, UserResponse
 from app.services.auth_service import authenticate_user, register_user
 from app.dependencies import get_current_user
+from app.config import get_settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -16,17 +17,9 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 async def register(
     request: RegisterRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    """Register a new user and create their organization."""
-    from app.config import get_settings
-    settings = get_settings()
-    if "[YOUR-DATABASE-PASSWORD]" in settings.DATABASE_URL or "[YOUR-PASSWORD]" in settings.DATABASE_URL:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database Password Required: Your .env file currently has '[YOUR-DATABASE-PASSWORD]'. Please set your actual Supabase PostgreSQL password in .env to connect.",
-        )
-
+    """Register a new user and create their organization in MongoDB."""
     try:
         return await register_user(
             db=db,
@@ -42,10 +35,11 @@ async def register(
         )
     except Exception as e:
         err_msg = str(e)
-        if "nodename nor servname" in err_msg or "gaierror" in err_msg or "CannotConnectNowError" in err_msg:
+        if "ServerSelectionTimeoutError" in err_msg or "ConnectionRefusedError" in err_msg:
+            settings = get_settings()
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database Connection Error: Could not connect to Supabase/PostgreSQL. Please update your .env file with your real Supabase connection string.",
+                detail=f"Database Connection Error: Could not connect to MongoDB at {settings.MONGODB_URL}. Please verify MongoDB is running.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -56,17 +50,9 @@ async def register(
 @router.post("/login", response_model=AuthResponse)
 async def login(
     request: LoginRequest,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Authenticate with email and password."""
-    from app.config import get_settings
-    settings = get_settings()
-    if "[YOUR-DATABASE-PASSWORD]" in settings.DATABASE_URL or "[YOUR-PASSWORD]" in settings.DATABASE_URL:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Database Password Required: Your .env file currently has '[YOUR-DATABASE-PASSWORD]'. Please set your actual Supabase PostgreSQL password in .env to connect.",
-        )
-
     try:
         return await authenticate_user(
             db=db,
@@ -80,10 +66,11 @@ async def login(
         )
     except Exception as e:
         err_msg = str(e)
-        if "nodename nor servname" in err_msg or "gaierror" in err_msg or "CannotConnectNowError" in err_msg:
+        if "ServerSelectionTimeoutError" in err_msg or "ConnectionRefusedError" in err_msg:
+            settings = get_settings()
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Database Connection Error: Could not connect to Supabase/PostgreSQL. Please update your .env file with your real Supabase connection string.",
+                detail=f"Database Connection Error: Could not connect to MongoDB at {settings.MONGODB_URL}. Please verify MongoDB is running.",
             )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

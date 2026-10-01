@@ -24,16 +24,10 @@ frontend: ## Start frontend dev server
 dev: ## Start both servers (run in separate terminals)
 	@echo "Run 'make backend' and 'make frontend' in separate terminals"
 
-# ─── Database ────────────────────────────────────────────
+# ─── Database (MongoDB & Compass) ────────────────────────
 
-db-migrate: ## Create a new migration
-	cd backend && . venv/bin/activate && alembic revision --autogenerate -m "$(msg)"
-
-db-upgrade: ## Apply migrations
-	cd backend && . venv/bin/activate && alembic upgrade head
-
-db-downgrade: ## Rollback last migration
-	cd backend && . venv/bin/activate && alembic downgrade -1
+seed-db: ## Seed MongoDB database with synthetic dataset for MongoDB Compass
+	PYTHONPATH=backend backend/venv/bin/python data/seed_mongodb.py
 
 # ─── Data ────────────────────────────────────────────────
 

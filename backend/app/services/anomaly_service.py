@@ -16,8 +16,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.models.analysis import Anomaly, AnalysisRun
@@ -211,19 +210,19 @@ async def run_transaction_anomaly_detection(
     organization_id: str,
     contamination: Optional[float] = 0.02,
     sensitivity: Optional[str] = "balanced",
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> AnomalyOverviewResponse:
     """Executes transaction anomaly detection pipeline, records findings in DB, and returns dashboard summary."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -362,8 +361,14 @@ async def run_transaction_anomaly_detection(
         "detected_at": detected_at,
         "anomaly_file_path": anomaly_csv,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return AnomalyOverviewResponse(
         dataset_id=str(dataset.id),
@@ -377,16 +382,16 @@ async def run_transaction_anomaly_detection(
 async def get_or_run_anomalies(
     dataset_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> AnomalyOverviewResponse:
-    """Retrieve saved anomaly detection results from CSV and metadata, or trigger initial run."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Retrieve saved anomaly detection results from CSV and metadata, or trigger initial run in MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -456,19 +461,19 @@ async def review_anomaly_record(
     anomaly_id: str,
     review_status: str,
     notes: Optional[str] = None,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> AnomalyItem:
-    """Updates the operator review status for a specific detected anomaly record."""
+    """Updates the operator review status for a specific detected anomaly record in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -505,8 +510,14 @@ async def review_anomaly_record(
     if "distribution" in saved_meta:
         saved_meta["distribution"]["reviewed_count"] = reviewed_count
         col_meta["anomaly_results"] = saved_meta
-        dataset.column_metadata = col_meta
-        await db.commit()
+
+        await db.datasets.update_one(
+            {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+            {"$set": {
+                "column_metadata": col_meta,
+                "updated_at": datetime.utcnow(),
+            }}
+        )
 
     return AnomalyItem(
         id=str(row["id"]),

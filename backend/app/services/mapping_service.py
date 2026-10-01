@@ -52,8 +52,7 @@ from __future__ import annotations
 import re
 import uuid
 from typing import List, Dict, Any, Optional, Tuple
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.dataset import (
@@ -398,16 +397,16 @@ def validate_mapped_schema(mappings: Dict[str, Optional[str]]) -> SchemaValidati
 async def get_dataset_mapping_suggestions(
     dataset_id: str,
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> ColumnMappingResponse:
     """Retrieve or compute mapping suggestions for a dataset."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError("Dataset not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError("Dataset not found")
 
@@ -444,27 +443,31 @@ async def save_dataset_mappings(
     dataset_id: str,
     organization_id: str,
     mappings: Dict[str, Optional[str]],
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> SchemaValidationResult:
-    """Save confirmed column mappings and update dataset status."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    """Save confirmed column mappings and update dataset status in MongoDB."""
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError("Dataset not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError("Dataset not found")
 
     # Clean empty values
     clean_mappings = {k: v for k, v in mappings.items() if v}
 
-    dataset.column_mappings = clean_mappings
-    dataset.status = "mapped"
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_mappings": clean_mappings,
+            "status": "mapped",
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     validation = validate_mapped_schema(clean_mappings)
     validation.dataset_id = str(dataset.id)
-
-    await db.flush()
     return validation

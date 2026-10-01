@@ -17,8 +17,7 @@ from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics import silhouette_score
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.dataset import Dataset
 from app.schemas.ml import (
@@ -169,19 +168,19 @@ async def run_customer_segmentation(
     dataset_id: str,
     organization_id: str,
     k_clusters: Optional[int] = None,
-    db: Optional[AsyncSession] = None,
+    db: Optional[AsyncIOMotorDatabase] = None,
 ) -> SegmentationTrainResponse:
-    """Executes customer segmentation pipeline on dataset."""
+    """Executes customer segmentation pipeline on dataset in MongoDB."""
     if db is None:
         raise ValueError("Database session required")
 
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
-        )
-    )
-    dataset = result.scalar_one_or_none()
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise ValueError(f"Dataset {dataset_id} not found")
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise ValueError(f"Dataset {dataset_id} not found")
 
@@ -275,7 +274,7 @@ async def run_customer_segmentation(
 
     trained_at = datetime.utcnow().isoformat()
 
-    # Update database metadata
+    # Update database metadata in MongoDB
     col_meta = dataset.column_metadata or {}
     col_meta["segmentation_results"] = {
         "dataset_id": str(dataset.id),
@@ -287,8 +286,14 @@ async def run_customer_segmentation(
         "elbow_curve": [e.model_dump() for e in elbow_curve],
         "trained_at": trained_at,
     }
-    dataset.column_metadata = col_meta
-    await db.commit()
+
+    await db.datasets.update_one(
+        {"$or": [{"id": dataset.id}, {"_id": dataset.id}]},
+        {"$set": {
+            "column_metadata": col_meta,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
 
     return SegmentationTrainResponse(
         dataset_id=str(dataset.id),

@@ -1,30 +1,12 @@
-"""Dataset service — handles file ingestion, validation, and dataset records.
-
-DATA ENGINEERING CONCEPT: CHUNKED STREAMING & MEMORY BUDGET
-============================================================
-When users upload large business datasets (up to 50MB CSV or Excel),
-naive web backends often load the entire file into memory as a byte array:
-    `contents = await file.read()`  <- ANTI-PATTERN for production!
-
-Why is this an anti-pattern?
-1. If 10 users upload 50MB files concurrently, the server memory spikes by 500MB+
-2. Python garbage collection may fragment heap memory
-3. High memory usage causes process restarts / Out-Of-Memory (OOM) crashes
-
-THE SOLUTION: STREAMING CHUNKS (CHUNK-BY-CHUNK WRITING)
-We stream the file in fixed 64KB chunks (`chunk_size = 65536`) directly to disk:
-    `while chunk := await upload_file.read(65536): dst.write(chunk)`
-This keeps server RAM usage constant (< 1MB per connection) regardless of file size!
-"""
+"""Dataset service — handles file ingestion, validation, and dataset records (MongoDB Edition)."""
 
 from __future__ import annotations
 
 import os
 import uuid
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from fastapi import UploadFile, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.config import get_settings
 from app.models.dataset import Dataset
@@ -38,7 +20,7 @@ async def process_and_save_upload(
     file: UploadFile,
     organization_id: str,
     user_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> DatasetUploadResponse:
     """Stream an uploaded file to disk in 64KB chunks and perform initial inspection."""
     filename = file.filename or "uploaded_data.csv"
@@ -53,7 +35,7 @@ async def process_and_save_upload(
     # Ensure upload directory exists
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
-    dataset_id = uuid.uuid4()
+    dataset_id = str(uuid.uuid4())
     storage_filename = f"{dataset_id}.{ext}"
     target_path = os.path.join(settings.UPLOAD_DIR, storage_filename)
 
@@ -69,7 +51,6 @@ async def process_and_save_upload(
                     break
                 total_bytes += len(chunk)
                 if total_bytes > max_bytes:
-                    # Clean up partial file on overflow
                     dst.close()
                     if os.path.exists(target_path):
                         os.remove(target_path)
@@ -123,11 +104,11 @@ async def process_and_save_upload(
             detail="File contains no readable column headers.",
         )
 
-    # 3. Create Dataset record in database
+    # 3. Create Dataset record in MongoDB
     dataset = Dataset(
         id=dataset_id,
-        organization_id=uuid.UUID(organization_id),
-        uploaded_by=uuid.UUID(user_id),
+        organization_id=organization_id,
+        uploaded_by=user_id,
         name=filename,
         file_path=target_path,
         file_type=ext,
@@ -145,8 +126,7 @@ async def process_and_save_upload(
             }
         },
     )
-    db.add(dataset)
-    await db.flush()
+    await db.datasets.insert_one(dataset.to_doc())
 
     return DatasetUploadResponse(
         id=str(dataset.id),
@@ -165,15 +145,15 @@ async def process_and_save_upload(
 
 async def list_datasets_for_organization(
     organization_id: str,
-    db: AsyncSession,
+    db: AsyncIOMotorDatabase,
 ) -> List[DatasetResponse]:
-    """List all datasets belonging to the organization."""
-    result = await db.execute(
-        select(Dataset)
-        .where(Dataset.organization_id == uuid.UUID(organization_id))
-        .order_by(Dataset.created_at.desc())
-    )
-    datasets = result.scalars().all()
+    """List all datasets belonging to the organization in MongoDB."""
+    cursor = db.datasets.find({"organization_id": str(organization_id)}).sort("created_at", -1)
+    datasets: List[Dataset] = []
+    async for doc in cursor:
+        d = Dataset.from_doc(doc)
+        if d:
+            datasets.append(d)
 
     return [
         DatasetResponse(

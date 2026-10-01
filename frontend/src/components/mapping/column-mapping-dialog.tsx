@@ -54,7 +54,7 @@ export function ColumnMappingDialog({
 
       // Pre-fill state with suggested mappings
       const initial: Record<string, string> = {};
-      response.data.mappings.forEach((m) => {
+      response.data.mappings.forEach((m: ColumnMappingSuggestion) => {
         if (m.mapped_column) {
           initial[m.canonical_field] = m.mapped_column;
         }

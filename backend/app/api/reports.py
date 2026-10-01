@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_organization_id
@@ -31,7 +30,7 @@ async def list_reports(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Retrieve history of all generated PDF and CSV reports for a dataset."""
     try:
@@ -58,7 +57,7 @@ async def generate_report(
     request: ReportGenerateRequest,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Compile a branded executive PDF or CSV report for a dataset."""
     try:
@@ -86,7 +85,7 @@ async def download_report(
     report_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Download a compiled corporate report file (PDF or CSV)."""
     try:

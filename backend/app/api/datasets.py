@@ -1,12 +1,11 @@
-"""Dataset API endpoints for uploading, listing, profiling, and mapping datasets."""
+"""Dataset API endpoints for uploading, listing, profiling, and mapping datasets (MongoDB Edition)."""
 
 from __future__ import annotations
 
 from typing import List, Dict, Optional
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.database import get_db
 from app.dependencies import get_current_user, get_organization_id
@@ -45,7 +44,7 @@ async def upload_dataset(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     organization_id: str = Depends(get_organization_id),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Upload a business dataset (CSV or XLSX)."""
     return await process_and_save_upload(
@@ -60,7 +59,7 @@ async def upload_dataset(
 async def list_datasets(
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """List all datasets owned by the user's organization."""
     datasets = await list_datasets_for_organization(
@@ -75,7 +74,7 @@ async def run_profiling(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Execute automated data profiling and quality scoring on a dataset."""
     try:
@@ -101,16 +100,19 @@ async def get_profiling_report(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get the data profiling and quality report for a dataset."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
         )
-    )
-    dataset = result.scalar_one_or_none()
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -140,7 +142,7 @@ async def get_mappings(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get smart suggested column mappings for a dataset."""
     try:
@@ -162,7 +164,7 @@ async def save_mappings(
     request: SaveColumnMappingRequest,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Save confirmed column mappings and return module readiness validation."""
     try:
@@ -184,16 +186,19 @@ async def validate_dataset_schema(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Validate current column mappings against downstream ML requirements."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
         )
-    )
-    dataset = result.scalar_one_or_none()
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -212,7 +217,7 @@ async def run_clean_dataset(
     config: Optional[CleaningStrategyConfig] = None,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Execute data cleaning and transformation pipeline on dataset."""
     try:
@@ -239,16 +244,19 @@ async def get_cleaning_summary(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get transformation audit trail and summary for a cleaned dataset."""
-    result = await db.execute(
-        select(Dataset).where(
-            Dataset.id == uuid.UUID(dataset_id),
-            Dataset.organization_id == uuid.UUID(organization_id),
+    doc = await db.datasets.find_one({
+        "$or": [{"id": str(dataset_id)}, {"_id": str(dataset_id)}],
+        "organization_id": str(organization_id),
+    })
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
         )
-    )
-    dataset = result.scalar_one_or_none()
+    dataset = Dataset.from_doc(doc)
     if not dataset:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -271,7 +279,7 @@ async def generate_features(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Generate model-ready customer RFM and time-series feature tables."""
     try:
@@ -297,7 +305,7 @@ async def get_features_summary(
     dataset_id: str,
     organization_id: str = Depends(get_organization_id),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     """Get or generate the engineered features catalog and summaries for a dataset."""
     try:
